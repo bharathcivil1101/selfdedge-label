@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>A4 Shelf-Edge Label Printer</title>
+<style>
+@page{size:A4 portrait;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#e9e9e6;color:#1d1d1b}
+header.ui{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:#1d1d1b;color:#fff;position:sticky;top:0;z-index:5}
+header.ui h1{font-size:16px;margin:0 auto 0 0}
+button{font:inherit;padding:6px 12px;border:1px solid #888;border-radius:5px;background:#fff;cursor:pointer}
+button:hover{background:#f3f3f3}
+button.pri{background:#f6dc3b;border-color:#c9b212;font-weight:700;color:#111}
+button.dan{border-color:#b3261e;color:#b3261e}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2457d6;outline-offset:1px}
+main{display:grid;grid-template-columns:minmax(330px,430px) 1fr;gap:16px;padding:16px;align-items:start}
+aside{display:flex;flex-direction:column;gap:12px}
+fieldset{background:#fff;border:1px solid #d3d3ce;border-radius:8px;margin:0;padding:10px 12px 12px}
+legend{font-weight:700;padding:0 6px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g .w{grid-column:1/-1}
+label{display:flex;flex-direction:column;font-size:12px;color:#444;gap:2px}
+label.ck{flex-direction:row;align-items:center;gap:6px;font-size:13px}
+input,select{font:inherit;padding:5px 7px;border:1px solid #999;border-radius:5px;width:100%;min-width:0}
+input[type=color]{padding:1px;height:30px}input[type=checkbox]{width:auto}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.msg{min-height:20px;font-size:13px;margin-top:6px}.msg.err{color:#b3261e}.msg.ok{color:#17692f}
+.warn{background:#fff3cd;border:1px solid #e0b800;padding:6px 8px;border-radius:5px;margin-top:8px;font-size:13px}
+.note{font-size:12px;color:#555;margin:6px 0 0}
+.hide{display:none!important}
+#pane{overflow:auto;position:sticky;top:60px;max-height:calc(100vh - 76px);background:#d9d9d4;border-radius:8px;padding:12px}
+#sheet{position:relative;width:210mm;height:297mm;background:#fff;box-shadow:0 2px 12px #0004;margin:0 auto;overflow:hidden;transform-origin:top left}
+.cell{position:absolute;overflow:hidden;background:#fff}
+.guides .cell{border:var(--bw) solid var(--bc)!important}
+@media screen{.cell{cursor:pointer}.cell.sel{outline:.6mm solid #2457d6;outline-offset:-.6mm;z-index:2}.cell:hover{background:#fffbe0}}
+.lbl{display:flex;height:100%;width:100%;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.fit{overflow:hidden}
+.lname{flex:1 1 0;min-height:0;font-weight:700;line-height:1.15;word-break:break-word}
+.pr{font-weight:700;white-space:nowrap;line-height:1.2}.pr s{margin-right:1.5mm}
+.unit{font-size:.8em;line-height:1.2;white-space:nowrap}
+.panel{flex:0 0 38%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;line-height:1.05;padding:1mm;text-transform:uppercase}
+.bc svg{display:block;width:100%}.bc div{text-align:center;letter-spacing:.9mm;line-height:1;font-size:1.7mm;white-space:nowrap;overflow:hidden}
+body.pv aside,body.pv header.ui{display:none}
+body.pv main{display:block;padding:8px}body.pv #pane{position:static;max-height:none}
+#exitpv{display:none;position:fixed;top:10px;right:10px;z-index:9}body.pv #exitpv{display:block}
+@media print{
+ body,#pane{background:#fff!important;padding:0!important;margin:0!important;overflow:visible!important}
+ header.ui,aside,#exitpv{display:none!important}
+ main{display:block;padding:0}#pane{position:static;max-height:none}
+ #sheet{zoom:1!important;box-shadow:none;margin:0;height:296.6mm}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+html{-webkit-text-size-adjust:100%}
+@media(max-width:900px){main{grid-template-columns:1fr;padding:10px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));padding-bottom:max(10px,env(safe-area-inset-bottom))}
+#pane{position:static;max-height:none;order:-1;-webkit-overflow-scrolling:touch}
+input,select,button{font-size:16px;min-height:42px}.g{grid-template-columns:1fr 1fr}header.ui{padding-top:max(10px,env(safe-area-inset-top))}header.ui button{flex:1 1 40%}
+#camBox{padding-top:max(10px,env(safe-area-inset-top))!important;padding-bottom:max(10px,env(safe-area-inset-bottom))!important}}
+</style></head><body>
+<header class="ui"><h1>A4 Shelf-Edge Label Printer</h1>
+<button class="pri" id="bPrint">Print A4</button><button id="bPv">Print preview</button>
+<button id="bExJ">Export data (JSON)</button><button id="bImJ">Import data</button>
+<button id="bExC">Export products (CSV)</button><button id="bImC">Import products</button>
+<button class="dan" id="bNew">New sheet</button>
+<input type="file" id="fJ" accept=".json" class="hide"><input type="file" id="fC" accept=".csv" class="hide"></header>
+<button id="exitpv">Exit preview</button>
+<div id="camBox" class="hide" style="position:fixed;inset:0;background:#000d;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px"><video id="vid" playsinline muted style="max-width:100%;max-height:70vh;border-radius:8px"></video><div id="camMsg" style="color:#fff">Point the camera at a barcode</div><button id="bCamStop">Cancel</button></div>
+<main>
+<aside class="ui">
+<fieldset><legend>1. Product details &amp; barcode</legend>
+<div class="g">
+<label class="w">Barcode (scan here, then Enter)<input id="bc" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, press Enter"></label>
+<div class="w row" style="margin:0"><button id="bCam">Scan with camera</button><button id="bPhoto">Scan from photo</button><input type="file" id="fPhoto" accept="image/*" capture="environment" class="hide"></div>
+<label class="w">Product name<input id="name"></label>
+<label>Size / description<input id="desc" placeholder="75cl, 500g"></label>
+<label>Currency<input id="cur" value="£" maxlength="3"></label>
+<label>Regular price<input id="reg" type="number" step="0.01" min="0"></label>
+<label>Offer price (each)<input id="off" type="number" step="0.01" min="0"></label>
+<label class="w">Offer type<select id="type"><option value="normal">Normal price</option><option value="reduced">Reduced price</option><option value="multi">Multibuy (2 for £X, 3 for £X…)</option><option value="bogof">Buy one get one free</option><option value="custom">Custom offer</option></select></label>
+<label data-for="multi">Offer quantity<input id="qty" type="number" min="2" step="1" value="2"></label>
+<label data-for="multi">Multibuy price<input id="deal" type="number" step="0.01" min="0"></label>
+<label class="w" data-for="custom">Custom offer text (Enter = new line not supported; use / for line break)<input id="custom" placeholder="SAVE £3 / TODAY"></label>
+<label class="w">Unit price (optional)<input id="unit" placeholder="£11.67 per litre"></label>
+</div>
+<div class="msg" id="bcmsg"></div>
+<p class="note">Supports EAN-13, EAN-8, UPC-A (check digit validated) and Code 128 for other codes. Camera scanning works on iPhone Safari and Android Chrome. Live video needs HTTPS and camera permission; "Scan from photo" works anywhere. A USB scanner also works.</p></fieldset>
+
+<fieldset><legend>2. Selected cell</legend>
+<div class="g"><label>Cell number<input id="cellNo" type="number" min="1" value="1"></label><div id="cellInfo" style="align-self:end;font-weight:700"></div></div>
+<div class="row"><button class="pri" id="bSave">Save to cell</button><button class="dan" id="bClear">Clear this cell</button><button class="dan" id="bClearAll">Clear all cells</button></div>
+<div class="g" style="margin-top:8px"><label>Target cell<input id="target" type="number" min="1" value="2"></label>
+<div class="row" style="align-self:end;margin:0"><button id="bDup">Duplicate to</button><button id="bMove">Move to</button></div></div>
+<div class="msg" id="msg"></div></fieldset>
+
+<fieldset><legend>3. A4 page layout (mm)</legend>
+<div class="g">
+<label>Top margin<input data-s="mt" type="number" step="0.5" min="0"></label><label>Bottom margin<input data-s="mb" type="number" step="0.5" min="0"></label>
+<label>Left margin<input data-s="ml" type="number" step="0.5" min="0"></label><label>Right margin<input data-s="mr" type="number" step="0.5" min="0"></label>
+<label>Columns<input data-s="cols" type="number" min="1" max="8" step="1"></label><label>Rows<input data-s="rows" type="number" min="1" max="20" step="1"></label>
+<label class="ck w"><input data-s="auto" type="checkbox">Auto-fit cell size to margins</label>
+<label>Column width<input data-s="cw" type="number" step="0.1" min="5"></label><label>Row height<input data-s="rh" type="number" step="0.1" min="5"></label>
+<label>Column gap<input data-s="gx" type="number" step="0.1" min="0"></label><label>Row gap<input data-s="gy" type="number" step="0.1" min="0"></label>
+<label>Border thickness<input data-s="bw" type="number" step="0.05" min="0"></label>
+<label>Border colour<input data-s="bcol" type="color"></label>
+<label class="ck w"><input data-s="guides" type="checkbox">Show cell borders</label></div>
+<div id="warn" class="warn hide"></div>
+<div class="row"><button id="bReset">Reset to defaults</button></div></fieldset>
+
+<fieldset><legend>4. Label design</legend>
+<div class="g">
+<label>Text size (mm)<input data-s="fs" type="number" step="0.1" min="2"></label><label>Barcode height (mm)<input data-s="bh" type="number" step="0.5" min="3"></label>
+<label>Padding (mm)<input data-s="pad" type="number" step="0.5" min="0"></label><label>Preview zoom (%)<input data-s="zoom" type="number" step="5" min="20" max="200" placeholder="auto"></label>
+<label>Background<input data-s="bg" type="color"></label><label>Text colour<input data-s="fg" type="color"></label>
+<label>Offer panel colour<input data-s="pc" type="color"></label></div>
+<p class="note">Long names and prices shrink automatically to fit. Text size is the maximum.</p></fieldset>
+</aside>
+<section id="pane"><div id="sheet"></div></section>
+</main>
+<script>
+"use strict";
+const KEY="shelfLabels.v1";
+const DEF={mt:10,mb:10,ml:6,mr:6,cols:3,rows:7,auto:true,cw:66,rh:39.5,gx:0,gy:0,bw:0.3,bcol:"#555555",guides:true,fs:3.2,bh:9,pad:2.5,bg:"#ffffff",fg:"#111111",pc:"#f6dc3b",zoom:""};
+const FIELDS=["name","desc","bc","reg","off","type","qty","deal","cur","unit","custom"];
+let S={...DEF},cells=[],sel=0;
+const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- storage ---------- */
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({settings:S,cells}))}catch(e){msg("Could not save to browser storage: "+e.message,1)}}
+function loadStore(){try{const j=JSON.parse(localStorage.getItem(KEY)||"null");if(j){S={...DEF,...j.settings};cells=Array.isArray(j.cells)?j.cells:[]}}catch(e){console.warn(e)}}
+function msg(t,err){const m=$("msg");m.textContent=t;m.className="msg "+(err?"err":"ok")}
+
+/* ---------- barcodes ---------- */
+const L=["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
+const R=L.map(s=>[...s].map(b=>b^1).join("")),G=R.map(s=>[...s].reverse().join(""));
+const PAR=["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLLGG".replace("LGLLGG","LGLGLG"),"LGLGGL","LGGLGL"];
+const C128=("212222,222122,222221,121223,121322,131222,122213,122312,132212,221213,221312,231212,112232,122132,122231,113222,123122,123221,223211,221132,221231,213212,223112,312131,311222,321122,321221,312212,322112,322211,212123,212321,232121,111323,131123,131321,112313,132113,132311,211313,231113,231311,112133,112331,132131,113123,113321,133121,313121,211331,231131,213113,213311,213131,311123,311321,331121,312113,312311,332111,314111,221411,431111,111224,111422,121124,121421,141122,141221,112214,112412,122114,122411,142112,142211,241211,221114,413111,241112,134111,111242,121142,121241,114212,124112,124211,411212,421112,421211,212141,214121,412121,111143,111341,131141,114113,114311,411113,411311,113141,114131,311141,411131,211412,211214,211232,2331112").split(",");
+function checkOK(d){const b=d.slice(0,-1);let s=0;for(let i=0;i<b.length;i++)s+=+b[b.length-1-i]*(i%2?1:3);return (10-s%10)%10===+d.slice(-1)}
+function barcodeBits(v){
+  v=String(v||"").trim();if(!v)return null;
+  if(/^\d+$/.test(v)&&[8,12,13].includes(v.length)){
+    if(!checkOK(v))return{error:"Invalid check digit for a "+v.length+"-digit barcode. Please re-check the number."};
+    if(v.length===8)return{type:"EAN-8",bits:"101"+[...v.slice(0,4)].map(d=>L[d]).join("")+"01010"+[...v.slice(4)].map(d=>R[d]).join("")+"101"};
+    const e=v.length===12?"0"+v:v,p=PAR[e[0]];
+    return{type:v.length===12?"UPC-A":"EAN-13",bits:"101"+[...e.slice(1,7)].map((d,i)=>(p[i]==="L"?L:G)[d]).join("")+"01010"+[...e.slice(7)].map(d=>R[d]).join("")+"101"};}
+  if(![...v].every(c=>c>=" "&&c<="~"))return{error:"Barcode contains characters Code 128 cannot encode."};
+  const vals=[...v].map(c=>c.charCodeAt(0)-32);let sum=104;vals.forEach((x,i)=>sum+=x*(i+1));
+  const seq=[104,...vals,sum%103,106];
+  let bits="";seq.forEach(c=>{[...C128[c]].forEach((w,i)=>bits+=(i%2?"0":"1").repeat(+w))});
+  return{type:"Code 128",bits};}
+function barcodeSVG(v){
+  const r=barcodeBits(v);if(!r||r.error)return"";
+  const q=10,n=r.bits.length;let path="";
+  for(let i=0;i<n;){if(r.bits[i]==="1"){let j=i;while(r.bits[j]==="1")j++;path+=`M${i+q} 0h${j-i}v1h-${j-i}z`;i=j}else i++}
+  return `<svg viewBox="0 0 ${n+2*q} 1" preserveAspectRatio="none" style="height:${S.bh}mm"><path d="${path}" fill="#000"/></svg>`;}
+
+/* ---------- layout ---------- */
+function layout(){
+  const c=Math.max(1,S.cols|0),r=Math.max(1,S.rows|0);
+  let cw=S.cw,rh=S.rh;
+  if(S.auto){cw=(210-S.ml-S.mr-(c-1)*S.gx)/c;rh=(297-S.mt-S.mb-(r-1)*S.gy)/r}
+  const W=S.ml+c*cw+(c-1)*S.gx+S.mr,H=S.mt+r*rh+(r-1)*S.gy+S.mb;
+  return{c,r,cw,rh,W,H,over:W>210.01||H>297.01};}
+function cellPos(i,L){const col=i%L.c,row=Math.floor(i/L.c);return{x:S.ml+col*(L.cw+S.gx),y:S.mt+row*(L.rh+S.gy),col:col+1,row:row+1}}
+
+/* ---------- label rendering ---------- */
+function money(cur,n){n=parseFloat(n);return isNaN(n)?"":cur+n.toFixed(2)}
+function dealFmt(cur,n){n=parseFloat(n);return isNaN(n)?"":cur+(Number.isInteger(n)?n:n.toFixed(2))}
+function labelHTML(d){
+  const cur=d.cur||"£",reg=money(cur,d.reg),off=money(cur,d.off);let line="",panel="";
+  switch(d.type){
+    case"reduced":line=(reg?`<s>${esc(reg)}</s>`:"")+`<span>${esc(off||reg)}</span>`;panel=off?`NOW<br>${esc(off)}`:"";break;
+    case"multi":line=(reg?`<s>${esc(reg)}</s>`:"")+(off?`<span>Each ${esc(off)}</span>`:"");panel=`${esc(d.qty||2)} FOR<br>${esc(dealFmt(cur,d.deal))}`;break;
+    case"bogof":line=esc(reg||off);panel="BUY 1<br>GET 1<br>FREE";break;
+    case"custom":line=(reg?`<s>${esc(reg)}</s>`:"")+(off?`<span>${esc(off)}</span>`:"");panel=esc(d.custom||"").split("/").map(s=>s.trim()).join("<br>");break;
+    default:line=`<span style="font-size:1.8em">${esc(reg||off)}</span>`}
+  const bc=d.bc?`<div class="bc">${barcodeSVG(d.bc)}<div>${esc(d.bc)}</div></div>`:"";
+  const nm=esc(d.name)+(d.desc?" "+esc(d.desc):"");
+  return `<div class="lbl" style="background:${S.bg};color:${S.fg}"><div class="left" style="padding:${S.pad}mm"><div class="lname fit" data-fs="${S.fs}">${nm}</div>`+
+   `<div class="pr fit" data-fs="${S.fs*1.2}">${line}</div>${d.unit?`<div class="unit fit" data-fs="${S.fs*.85}">${esc(d.unit)}</div>`:""}${bc}</div>`+
+   (panel?`<div class="panel fit" style="background:${S.pc}" data-fs="${S.fs*2.4}">${panel}</div>`:"")+`</div>`;}
+function fitAll(){document.querySelectorAll("#sheet .fit").forEach(el=>{let s=+el.dataset.fs;el.style.fontSize=s+"mm";
+  while(s>1.6&&(el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)){s-=.2;el.style.fontSize=s+"mm"}})}
+
+/* ---------- grid ---------- */
+function renderGrid(){
+  const Lo=layout(),sh=$("sheet");sh.className=S.guides?"guides":"";sh.style.setProperty("--bw",Math.max(S.bw,0.1)+"mm");sh.style.setProperty("--bc",S.bcol||"#555");
+  let h="";for(let i=0;i<Lo.c*Lo.r;i++){const p=cellPos(i,Lo);
+    h+=`<div class="cell${i===sel?" sel":""}" data-i="${i}" style="left:${p.x}mm;top:${p.y}mm;width:${Lo.cw}mm;height:${Lo.rh}mm">${cells[i]?labelHTML(cells[i]):""}</div>`}
+  sh.innerHTML=h;fitAll();applyZoom();
+  const w=$("warn");w.classList.toggle("hide",!Lo.over);
+  if(Lo.over)w.textContent=`Warning: layout is ${Lo.W.toFixed(1)} × ${Lo.H.toFixed(1)} mm, larger than A4 (210 × 297 mm). Content may be cut off when printing.`;
+  const n=Lo.c*Lo.r,p=cellPos(Math.min(sel,n-1),Lo);
+  $("cellNo").max=$("target").max=n;$("cellInfo").textContent=`Cell ${sel+1} of ${n} (row ${p.row}, col ${p.col})${cells[sel]?"":" – empty"}`;}
+function applyZoom(){const sh=$("sheet");let z=S.zoom?S.zoom/100:($("pane").clientWidth-24)/(210*96/25.4);sh.style.zoom=Math.max(.2,Math.min(2,z||1))}
+function selectCell(i,load=true){const n=layout().c*layout().r;sel=Math.max(0,Math.min(n-1,i));$("cellNo").value=sel+1;
+  if(load&&cells[sel])setForm(cells[sel]);renderGrid()}
+
+/* ---------- form ---------- */
+function getForm(){const d={};FIELDS.forEach(f=>d[f]=$(f).value.trim());return d}
+function setForm(d){FIELDS.forEach(f=>$(f).value=d[f]??(f==="cur"?"£":f==="qty"?2:f==="type"?"normal":""));toggleType();bcCheck()}
+function toggleType(){const t=$("type").value;document.querySelectorAll("[data-for]").forEach(e=>e.classList.toggle("hide",e.dataset.for!==t))}
+function bcCheck(){const v=$("bc").value.trim(),m=$("bcmsg");if(!v){m.textContent="";return true}
+  const r=barcodeBits(v);if(r.error){m.textContent=r.error;m.className="msg err";return false}m.textContent="Valid "+r.type+" barcode.";m.className="msg ok";return true}
+function validate(d){
+  if(!d.name)return"Enter a product name.";
+  for(const f of["reg","off","deal"])if(d[f]!==""&&(isNaN(+d[f])||+d[f]<0))return"Prices must be numbers of 0 or more.";
+  if(d.type==="multi"){if(d.deal==="")return"Enter the multibuy price.";if(!(+d.qty>=2))return"Offer quantity must be 2 or more."}
+  if(d.type==="reduced"&&d.off==="")return"Enter the offer price for a reduced label.";
+  if(d.type==="normal"&&d.reg===""&&d.off==="")return"Enter a regular price.";
+  if(d.type==="custom"&&!d.custom)return"Enter the custom offer text.";
+  if(d.bc&&barcodeBits(d.bc).error)return barcodeBits(d.bc).error;return""}
+
+/* ---------- cell actions ---------- */
+function saveCell(){const d=getForm(),e=validate(d);if(e)return msg(e,1);cells[sel]=d;persist();renderGrid();msg(`Saved to cell ${sel+1}.`)}
+function clearCell(){if(!cells[sel])return msg("This cell is already empty.",1);if(!confirm(`Clear cell ${sel+1}? Other cells are not affected.`))return;cells[sel]=null;persist();renderGrid();msg(`Cell ${sel+1} cleared.`)}
+function clearAll(){if(!confirm("Clear ALL cells? This cannot be undone (export a backup first)."))return;cells=[];persist();renderGrid();msg("All cells cleared.")}
+function newSheet(){if(!confirm("Start a new sheet? All labels on the current sheet will be cleared. Settings are kept."))return;cells=[];sel=0;persist();renderGrid();msg("New sheet started.")}
+function targetIdx(){const n=layout().c*layout().r,t=(parseInt($("target").value)||0)-1;if(t<0||t>=n){msg(`Target must be between 1 and ${n}.`,1);return-1}if(t===sel){msg("Choose a different target cell.",1);return-1}return t}
+function dupCell(move){if(!cells[sel])return msg("Select a populated cell first.",1);const t=targetIdx();if(t<0)return;
+  if(cells[t]&&!confirm(`Cell ${t+1} already has a label. Replace it?`))return;
+  cells[t]={...cells[sel]};if(move)cells[sel]=null;persist();selectCell(t);msg(`${move?"Moved":"Copied"} to cell ${t+1}.`)}
+function scanLookup(){const v=$("bc").value.trim();if(!v)return;
+  if(!bcCheck())return;
+  const i=cells.findIndex(c=>c&&c.bc===v);
+  if(i>=0){selectCell(i);msg(`Barcode found in cell ${i+1}. Edit and press Save to cell.`)}
+  else{msg("New barcode. Enter the product details and save to the selected cell.");$("name").focus()}}
+
+/* ---------- camera scanning (works on iPhone Safari: built-in decoder, no library) ---------- */
+let camStream=null,camTimer=null,nativeDet=null,busy=false;
+const rl=b=>{const o=[];let c=b[0],n=0;for(const x of b){if(x===c)n++;else{o.push(n);c=x;n=1}}o.push(n);return o};
+const LP=L.map(rl),GP=G.map(rl),RP=R.map(rl),LG=LP.concat(GP);
+const C128P=C128.slice(0,106).map(x=>[...x].map(Number)).concat([[2,3,3,1,1,1]]);
+function sym(r,i,pats,mods){const n=pats[0].length;if(i+n>r.length)return-1;let t=0;for(let k=0;k<n;k++)t+=r[i+k];const sc=t/mods;let best=-1,be=1e9;
+  pats.forEach((q,j)=>{let e=0;for(let k=0;k<n;k++)e+=Math.abs(r[i+k]/sc-q[k]);if(e<be){be=e;best=j}});return be<(mods>8?2.4:1.7)?best:-1}
+function decEAN(r,i,n8){
+  const a=r[i],b=r[i+1],c=r[i+2];if(Math.max(a,b,c)>2.2*Math.min(a,b,c))return null;
+  const nl=n8?4:6,lp=i+3,rp=lp+nl*4+5;let d="",par="";
+  for(let k=0;k<nl;k++){const m=sym(r,lp+k*4,LG,7);if(m<0)return null;d+=m%10;par+=m<10?"L":"G"}
+  for(let k=0;k<nl;k++){const m=sym(r,rp+k*4,RP,7);if(m<0)return null;d+=m}
+  if(!n8){const f=PAR.indexOf(par);if(f<0)return null;d=f+d}
+  if(!checkOK(d))return null;return(d.length===13&&d[0]==="0")?d.slice(1):d}
+function dec128(r,i){
+  const m=sym(r,i,C128P,11);if(m<103||m>105)return null;let set=m,sum=m,out="",p=i+6;
+  for(let k=1;k<45;k++){const v=sym(r,p,C128P,11);if(v<0||v===106)return null;p+=6;
+    if(sym(r,p,C128P,11)===106)return(sum%103===v&&out)?out:null;
+    if(v>=103)return null;sum+=v*k;
+    if(set===105){if(v<100)out+=String(v).padStart(2,"0");else if(v===100)set=104;else return null}
+    else{if(v===99)set=105;else if(v<96)out+=String.fromCharCode(v+32);else return null}}
+  return null}
+function scanRow(g){
+  const n=g.length,w=Math.max(15,n>>3),pre=new Float64Array(n+1);for(let i=0;i<n;i++)pre[i+1]=pre[i]+g[i];
+  const bits=new Array(n);for(let i=0;i<n;i++){const lo=Math.max(0,i-w),hi=Math.min(n,i+w);bits[i]=g[i]<(pre[hi]-pre[lo])/(hi-lo)*.9?1:0}
+  const st=bits.indexOf(1);if(st<0)return null;const r=rl(bits.slice(st));
+  for(let i=0;i<r.length;i+=2){
+    if(r.length-i>=59){const v=decEAN(r,i,false);if(v)return v}
+    if(r.length-i>=43){const v=decEAN(r,i,true);if(v)return v}
+    if(r.length-i>=20){const v=dec128(r,i);if(v)return v}}
+  return null}
+function scanCanvas(cv){
+  const w=cv.width,h=cv.height,im=cv.getContext("2d").getImageData(0,0,w,h).data,gr=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++)gr[i]=im[i*4]*.3+im[i*4+1]*.59+im[i*4+2]*.11;
+  for(const vert of[0,1]){const len=vert?h:w,cnt=vert?w:h;
+    for(let t=0;t<40;t++){const f=Math.floor(cnt*(.1+.8*((t*.6180339)%1)));const row=new Float32Array(len);
+      for(let i=0;i<len;i++)row[i]=vert?gr[i*w+f]:gr[f*w+i];
+      const sm=row.map((v,i)=>(row[i-1]??v)*.25+v*.5+(row[i+1]??v)*.25);
+      const r=scanRow(sm)||scanRow(sm.slice().reverse());if(r)return r}}
+  return null}
+async function detect(cv){
+  if("BarcodeDetector" in window){try{nativeDet=nativeDet||new BarcodeDetector();const r=await nativeDet.detect(cv);if(r.length)return r[0].rawValue}catch(e){}}
+  return scanCanvas(cv)}
+function gotCode(v){$("bc").value=v;scanLookup();$("bc").focus()}
+async function startCam(){
+  if(!window.isSecureContext||!navigator.mediaDevices){msg("Live camera needs the page to be on HTTPS. Use 'Scan from photo' instead, which works anywhere.",1);return}
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920}}});
+    const v=$("vid");v.setAttribute("playsinline","");v.muted=true;v.srcObject=camStream;await v.play();$("camBox").classList.remove("hide");
+    const cv=document.createElement("canvas");
+    camTimer=setInterval(async()=>{if(busy||!v.videoWidth)return;busy=true;
+      try{const sc=Math.min(1,1280/v.videoWidth);cv.width=v.videoWidth*sc;cv.height=v.videoHeight*sc;cv.getContext("2d",{willReadFrequently:true}).drawImage(v,0,0,cv.width,cv.height);
+        const c=await detect(cv);if(c){stopCam();gotCode(c)}}catch(e){}busy=false},350)}
+  catch(e){stopCam();msg("Camera unavailable: "+(e.name==="NotAllowedError"?"permission denied. In Settings > Safari > Camera choose Allow or Ask.":e.message),1)}}
+function stopCam(){clearInterval(camTimer);if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null;$("camBox").classList.add("hide")}
+async function scanPhoto(file){
+  if(!file)return;msg("Reading photo...");
+  try{const url=URL.createObjectURL(file),img=new Image();img.src=url;await img.decode();
+    const cv=document.createElement("canvas");
+    for(const maxW of[1600,1000,2400]){const sc=Math.min(1,maxW/Math.max(img.naturalWidth,img.naturalHeight));
+      cv.width=Math.round(img.naturalWidth*sc);cv.height=Math.round(img.naturalHeight*sc);cv.getContext("2d",{willReadFrequently:true}).drawImage(img,0,0,cv.width,cv.height);
+      const c=await detect(cv);if(c){URL.revokeObjectURL(url);return gotCode(c)}}
+    URL.revokeObjectURL(url);msg("No barcode found. Retake the photo closer, in good light, with the barcode flat, sharp and filling most of the width.",1)}
+  catch(e){msg("Could not read photo: "+e.message,1)}}
+
+/* ---------- import / export ---------- */
+function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function stamp(){return new Date().toISOString().slice(0,10)}
+function exportJSON(){download(`shelf-labels-${stamp()}.json`,JSON.stringify({app:"shelf-labels",settings:S,cells},null,1),"application/json");msg("Backup downloaded.")}
+function importJSON(f){const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.cells))throw Error("no cells array");
+  if(!confirm("Replace current labels and settings with this file?"))return;S={...DEF,...j.settings};cells=j.cells;persist();syncInputs();renderGrid();msg("Data imported.")}catch(e){msg("Import failed: "+e.message,1)}};r.readAsText(f)}
+const csvCols=["cell",...FIELDS];
+function exportCSV(){const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const rows=[csvCols.join(",")];cells.forEach((c,i)=>{if(c)rows.push([i+1,...FIELDS.map(f=>c[f])].map(q).join(","))});
+  download(`shelf-products-${stamp()}.csv`,"\ufeff"+rows.join("\r\n"),"text/csv;charset=utf-8");msg("Product list downloaded.")}
+function parseCSV(t){const out=[];let row=[],f="",q=false;t=t.replace(/^\ufeff/,"");
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;else if(c===","){row.push(f);f=""}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;row.push(f);f="";if(row.some(x=>x!==""))out.push(row);row=[]}else f+=c}
+  row.push(f);if(row.some(x=>x!==""))out.push(row);return out}
+function importCSV(file){const r=new FileReader();r.onload=()=>{try{const rows=parseCSV(r.result),h=rows.shift().map(x=>x.trim().toLowerCase());
+  if(!h.includes("name"))throw Error("CSV needs a 'name' column");
+  const n=layout().c*layout().r,next=cells.slice();let add=0,skip=0,free=0;
+  for(const row of rows){const d={};FIELDS.forEach(f=>{const k=h.indexOf(f);d[f]=k>=0?(row[k]||"").trim():""});d.type=d.type||"normal";d.cur=d.cur||"£";d.qty=d.qty||"2";
+    if(validate(d)){skip++;continue}
+    let idx=h.includes("cell")?parseInt(row[h.indexOf("cell")])-1:NaN;
+    if(isNaN(idx)||idx<0){while(free<n&&next[free])free++;idx=free}
+    if(idx>=n){skip++;continue}next[idx]=d;add++}
+  if(!confirm(`Import ${add} product(s)${skip?` (${skip} invalid or outside the grid will be skipped)`:""}? Rows with a cell number replace that cell.`))return;
+  cells=next;persist();renderGrid();msg(`Imported ${add} product(s).`)}catch(e){msg("CSV import failed: "+e.message,1)}};r.readAsText(file)}
+
+/* ---------- settings ---------- */
+function syncInputs(){document.querySelectorAll("[data-s]").forEach(el=>{const v=S[el.dataset.s];if(el.type==="checkbox")el.checked=!!v;else el.value=v})}
+function bindSettings(){document.querySelectorAll("[data-s]").forEach(el=>el.addEventListener("input",()=>{
+  const k=el.dataset.s;if(el.type==="checkbox")S[k]=el.checked;else if(el.type==="color")S[k]=el.value;
+  else if(el.value===""){S[k]=k==="zoom"?"":DEF[k]}else{const n=parseFloat(el.value);if(isNaN(n))return;S[k]=n}
+  persist();selectCell(Math.min(sel,layout().c*layout().r-1),false)}))}
+function resetSettings(){if(!confirm("Reset layout and design settings to defaults? Saved labels are kept."))return;S={...DEF};persist();syncInputs();renderGrid()}
+
+/* ---------- printing ---------- */
+function printA4(){const L=layout();
+  if(L.over&&!confirm("The layout is larger than A4 and may be cut off. Print anyway?"))return;
+  alert("For accurate output: in the print dialog choose paper size A4, Margins: None, Scale: 100% (Default), and tick Background graphics.");
+  window.print()}
+function togglePv(on){document.body.classList.toggle("pv",on);if(on){$("sheet").style.zoom=($("pane").clientWidth-24)/(210*96/25.4)}else applyZoom()}
+
+/* ---------- init ---------- */
+function init(){
+  loadStore();syncInputs();bindSettings();setForm({});toggleType();
+  $("sheet").addEventListener("click",e=>{const c=e.target.closest(".cell");if(c)selectCell(+c.dataset.i)});
+  $("bc").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();scanLookup()}});
+  $("bc").addEventListener("input",bcCheck);$("type").addEventListener("change",toggleType);
+  $("cellNo").addEventListener("change",()=>selectCell((parseInt($("cellNo").value)||1)-1));
+  $("bSave").onclick=saveCell;$("bClear").onclick=clearCell;$("bClearAll").onclick=clearAll;
+  $("bDup").onclick=()=>dupCell(false);$("bMove").onclick=()=>dupCell(true);
+  $("bPrint").onclick=printA4;$("bPv").onclick=()=>togglePv(true);$("exitpv").onclick=()=>togglePv(false);
+  $("bExJ").onclick=exportJSON;$("bImJ").onclick=()=>$("fJ").click();$("bExC").onclick=exportCSV;$("bImC").onclick=()=>$("fC").click();
+  $("fJ").onchange=e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value=""};
+  $("fC").onchange=e=>{if(e.target.files[0])importCSV(e.target.files[0]);e.target.value=""};
+  $("bNew").onclick=newSheet;$("bReset").onclick=resetSettings;
+  $("bCam").onclick=startCam;$("bCamStop").onclick=stopCam;$("bPhoto").onclick=()=>$("fPhoto").click();
+  $("fPhoto").onchange=e=>{scanPhoto(e.target.files[0]);e.target.value=""};
+  window.addEventListener("resize",applyZoom);
+  renderGrid();$("bc").focus();
+}
+init();
+</script></body></html>
